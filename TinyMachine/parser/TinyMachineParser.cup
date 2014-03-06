@@ -1,0 +1,160 @@
+﻿/* Simulador MVT es una Herramienta que sirve como un simulador visual para la Máquina Virtual de Tiny [1] 
+ * la cual está descrita por su autor Kenneth Louden en su libro de Construcción de Compiladores.
+ * 
+ * Esta aplicación sirve de ayuda a los estudiantes de la materia Construcción de Compiladores, 
+ * al permitirles visualizar, ejecutar y depurar el código escrito en el lenguanje de la Maquina 
+ * Virtual de Tiny (TM). La aplicación realiza el resaltado de sintáxis de las instrucciones de la TM, 
+ * permite poner puntos de interrupción en el código y visualizar la memoria de datos y es estado de los 
+ * registros de la TM.
+ * 
+ * Para el desarrollo de este programa se utilizaron las librerías C#Lex [2] y C#Cup [2] desarrolladas 
+ * por Samuel Imsra, las cuales permitieron escribir el analizador léxico y sintáctico del programa 
+ * respectivamente.
+ * 
+ * Copyright (C) 2013 Manuel B. Sánchez
+ * 
+ * Este programa es software libre: puede redistribuirlo y/o modificarlo bajo los términos de la Licencia 
+ * General Pública de GNU publicada por la Free Software Foundation, ya sea la versión 3 de la Licencia, 
+ * o (a su elección) cualquier versión posterior.
+ * 
+ * Este programa se distribuye con la esperanza de que sea útil pero SIN NINGUNA GARANTÍA; incluso sin la 
+ * garantía implícita de MERCANTIBILIDAD o CALIFICADA PARA UN PROPÓSITO EN PARTICULAR. Vea la Licencia 
+ * General Pública de GNU para más detalles.
+ * 
+ * Usted ha debido de recibir una copia de la Licencia General Pública de GNU junto con este programa. 
+ * Si no, vea <http://www.gnu.org/licenses/>. 
+ * 
+ * [1] Louden, K. C. (2004). Construcción de compiladores: Principios y práctica (3ra ed.). Thomson.
+ * [2] Imriska, I. (2005). C#lexcup.  http://www.seclab.tuwien.ac.at/projects/cuplex/cup.htm
+ */
+
+// Especificación sintáctica en CUP para el lenguaje tiny
+namespace TinyMachine.parser;
+using System;
+using TUVienna.CS_CUP;
+using TUVienna.CS_CUP.Runtime;
+using System.Collections;
+using TinyMachine.util;
+using TinyMachine.ast;
+
+action code {: 
+
+    public int getLinea() {
+		return ((TinyMachineLexer)my_parser.getScanner()).getLinea();
+    }
+
+    public int getColumna(){
+        return ((TinyMachineLexer)my_parser.getScanner()).getColumna();
+    }
+
+    public string getNombreArchivo() {
+		return ((TinyMachineLexer)my_parser.getScanner()).getNombreArchivo();
+    }
+:} 
+
+parser code {:
+    int omerrs = 0;
+
+    public int getOmerrs(){
+        return omerrs;
+    }
+
+    public override void syntax_error(Symbol cur_token) {
+        int lineno = cur_token.left;
+        int column = cur_token.right;
+		string filename = action_obj.getNombreArchivo();
+		string errorMsg = filename + ": " + lineno  + ":" + column + ": error de sintáxis cerca de " + Utilidades.tokenEnTexto(cur_token);
+
+		Utilidades.reportError(errorMsg);
+ 
+		omerrs++;
+		if (Utilidades.errorList.Count>50) {
+			Utilidades.reportError("El análisis se ha detenido porque se encontraron muchos errores");
+			throw new ErrorAnalisisException("El análisis se ha detenido porque se encontraron muchos errores");
+		}
+    }
+
+    public override void unrecovered_syntax_error(Symbol cur_token)
+	{
+    }
+
+	public override void report_fatal_error(string   message, object   info)
+	{
+		Utilidades.reportError("ha ocurrido un error irrecuperable");
+		throw new ErrorAnalisisException("ha ocurrido un error irrecuperable");
+	}
+:}
+
+terminal Symbol HALT, IN, OUT, ADD, SUB, MUL, DIV;
+terminal Symbol LD, LDA, LDC, ST;
+terminal Symbol JLT, JLE, JGE, JGT, JEQ, JNE;
+terminal PARENT_DER, PARENT_IZQ, COLON, COMA, ERROR;
+terminal string COMENTARIO_LINEA, COMENTARIO_FIN, FIN_LINEA;
+terminal Symbol ENTERO; 
+
+nonterminal Programa programa;
+nonterminal Programa secuencia_sent;
+nonterminal Operacion sent;
+nonterminal Operacion sentenciaRM;
+nonterminal Operacion sentenciaRO;
+nonterminal Operacion argRM;
+nonterminal Operacion argRO;
+nonterminal string fin_sent;
+
+start with programa;
+
+programa 
+    ::= secuencia_sent:sc {: RESULT = sc; :}
+    ;
+
+secuencia_sent 
+    ::= secuencia_sent:sc sent:s {: if(s!=null) sc.Instrucciones[s.NumeroOp] = s; RESULT = sc; :}
+    | sent:s {: RESULT = new Programa(); if(s!=null) RESULT.Instrucciones[s.NumeroOp] = s; :}
+	| error
+    ;
+
+sent 
+    ::= COMENTARIO_LINEA {: RESULT = null; :}
+	| ENTERO:l COLON sentenciaRM:i fin_sent:c {: i.NumeroOp = (int)l.value; i.Comentario = c; RESULT = i; :}
+    | ENTERO:l COLON sentenciaRO:i fin_sent:c {: i.NumeroOp = (int)l.value; i.Comentario = c; RESULT = i; :}
+    ;
+
+fin_sent
+	::= FIN_LINEA {: RESULT = ""; :}
+	| COMENTARIO_FIN:c {: RESULT = c; :}
+	| COMENTARIO_LINEA:c {: RESULT = c; :}
+	|
+	;
+
+sentenciaRM
+	::= HALT:op argRM:i {: i.Opcode = op; RESULT = i; :}
+	| IN:op argRM:i {: i.Opcode = op; RESULT = i; :}
+	| OUT:op argRM:i {: i.Opcode = op; RESULT = i; :}
+	| ADD:op argRM:i {: i.Opcode = op; RESULT = i; :}
+	| SUB:op argRM:i {: i.Opcode = op; RESULT = i; :}
+	| MUL:op argRM:i {: i.Opcode = op; RESULT = i; :}
+	| DIV:op argRM:i {: i.Opcode = op; RESULT = i; :}
+	;
+
+argRM
+	::= ENTERO:r COMA ENTERO:s COMA ENTERO:t
+	{: RESULT = new Operacion(r,s,t); :}
+	;
+
+sentenciaRO
+	::= LD:op argRO:i {: i.Opcode = op; RESULT = i; :}
+	| LDA:op argRO:i {: i.Opcode = op; RESULT = i; :}
+	| LDC:op argRO:i {: i.Opcode = op; RESULT = i; :}
+	| ST:op argRO:i {: i.Opcode = op; RESULT = i; :}
+	| JLT:op argRO:i {: i.Opcode = op; RESULT = i; :}
+	| JLE:op argRO:i {: i.Opcode = op; RESULT = i; :}
+	| JGE:op argRO:i {: i.Opcode = op; RESULT = i; :}
+	| JGT:op argRO:i {: i.Opcode = op; RESULT = i; :}
+	| JEQ:op argRO:i {: i.Opcode = op; RESULT = i; :}
+	| JNE:op argRO:i {: i.Opcode = op; RESULT = i; :}
+	;
+
+argRO
+	::= ENTERO:r COMA ENTERO:s PARENT_IZQ ENTERO:t PARENT_DER
+	{: RESULT = new Operacion(r, s, t); :}
+	;
