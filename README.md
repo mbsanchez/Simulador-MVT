@@ -1,4 +1,4 @@
-Simulador MVT
+## Simulador MVT ##
 
 El Simulador MVT es una Herramienta que sirve como un simulador visual para la Máquina Virtual de Tiny [1] 
 la cual está descrita por su autor Kenneth Louden en su libro de Construcción de Compiladores.
@@ -27,4 +27,4 @@ Usted ha debido de recibir una copia de la Licencia General Pública de GNU junto
 Si no, vea <http://www.gnu.org/licenses/>. 
 
 [1] Louden, K. C. (2004). Construcción de compiladores: Principios y práctica (3ra ed.). Thomson.
-[2] Imriska, I. (2005). C#lexcup.  http://www.seclab.tuwien.ac.at/projects/cuplex/cup.htm
+[2] Imriska, I. (2005). C#lexcup.  [http://www.seclab.tuwien.ac.at/projects/cuplex/cup.htm]http://www.seclab.tuwien.ac.at/projects/cuplex/cup.htm
